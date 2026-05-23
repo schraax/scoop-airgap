@@ -48,20 +48,14 @@ GOOS=linux GOARCH=amd64 go build -o scoop-upstream-linux-amd64 ./cmd/scoop-upstr
 
 ## Docker
 
-A minimal image using the official Go builder and a scratch final layer:
+The repository ships a `Dockerfile` that uses a two-stage build:
 
-```dockerfile
-FROM golang:1.22-alpine AS build
-WORKDIR /src
-COPY . .
-RUN apk add --no-cache git \
- && go build -o /scoop-upstream ./cmd/scoop-upstream
+| Stage | Image | Purpose |
+|---|---|---|
+| build | `cgr.dev/chainguard/go` | Compiles a fully static binary (`CGO_ENABLED=0`) |
+| runtime | `cgr.dev/chainguard/git` | Distroless image with git and CA certificates; no shell, no package manager |
 
-FROM alpine:3.19
-RUN apk add --no-cache git ca-certificates
-COPY --from=build /scoop-upstream /usr/local/bin/scoop-upstream
-ENTRYPOINT ["scoop-upstream"]
-```
+[Chainguard](https://www.chainguard.dev) images are rebuilt daily from source with minimal installed packages, resulting in very few CVEs and a small attack surface.
 
 Build and push to your internal registry:
 
@@ -70,8 +64,24 @@ docker build -t registry.example.com/scoop-upstream:latest .
 docker push registry.example.com/scoop-upstream:latest
 ```
 
-{: .note }
-The final image uses Alpine (not `scratch`) because `git` requires a C runtime and CA certificates are needed for HTTPS connections to Artifactory and your internal Git server.
+The runtime image runs as non-root (uid `65532`) by default. Ensure any host directories you bind-mount are writable by that uid:
+
+```bash
+mkdir -p /var/cache/scoop-upstream
+chown -R 65532:65532 /var/cache/scoop-upstream
+```
+
+### Pinning image digests
+
+The `Dockerfile` uses `:latest` tags for both Chainguard images. In production, pin to a specific digest for reproducible builds:
+
+```bash
+# Resolve current digests
+docker buildx imagetools inspect cgr.dev/chainguard/go:latest     | grep Digest
+docker buildx imagetools inspect cgr.dev/chainguard/git:latest    | grep Digest
+```
+
+Then replace `:latest` with `@sha256:<digest>` in the `Dockerfile`.
 
 ---
 

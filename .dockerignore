@@ -1,0 +1,7 @@
+.git
+docs/
+*.md
+config.yaml
+/var/
+.rtk/
+CLAUDE.md

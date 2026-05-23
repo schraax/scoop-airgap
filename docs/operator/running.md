@@ -120,6 +120,8 @@ docker run --rm \
   -config /config/config.yaml
 ```
 
+The container runs as uid `65532` (non-root). The cache directory on the host must be owned by that uid — see [Installation](installation.md#docker) for the `chown` command.
+
 ### Kubernetes CronJob
 
 ```yaml
