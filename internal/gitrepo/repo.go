@@ -19,8 +19,11 @@ type Repo struct {
 	localPath string
 }
 
-// New creates a Repo. If authToken is non-empty it is embedded into an HTTPS
-// URL as https://token@host/path, which works with Gitea, GitLab, and GitHub.
+// New creates a Repo. If authToken is non-empty it is embedded into the HTTPS
+// URL for git operations. On github.com the token is set as the password with
+// "x-access-token" as the username, which is required for GitHub App
+// installation tokens and works equally well for PATs. On other hosts the
+// token is set as the username (Gitea / Forgejo convention).
 func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
 	cleanURL := remoteURL
 	if authToken != "" {
@@ -28,7 +31,11 @@ func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse repo URL: %w", err)
 		}
-		u.User = url.User(authToken)
+		if u.Host == "github.com" {
+			u.User = url.UserPassword("x-access-token", authToken)
+		} else {
+			u.User = url.User(authToken)
+		}
 		remoteURL = u.String()
 	}
 	if localPath == "" {

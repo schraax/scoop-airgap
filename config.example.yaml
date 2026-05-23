@@ -21,8 +21,23 @@ storage:
 
 git:
   branch: main
-  # Optional: embedded into HTTPS clone URLs as https://token@host/...
+
+  # --- Authentication: choose one of the two options below ---
+
+  # Option 1 — Personal access token (simple setup)
   auth_token: ${GIT_AUTH_TOKEN}
+
+  # Option 2 — GitHub App (recommended for production; better audit trail,
+  # no shared long-lived credentials, permissions scoped per installation)
+  # When github_app is set, auth_token is ignored.
+  #
+  # github_app:
+  #   app_id: 123456           # numeric App ID from the app's settings page
+  #   installation_id: 78901234  # numeric ID visible in the install URL
+  #   # Supply the RSA private key inline via an env var:
+  #   private_key: "${GITHUB_APP_PRIVATE_KEY}"
+  #   # Or point to a PEM file (e.g. a mounted Kubernetes secret):
+  #   # private_key_path: /run/secrets/github-app.pem
   # Parent directory for clones; each bucket is placed at {local_path_base}/{name}.
   # A temporary directory is used if omitted.
   local_path_base: /var/cache/scoop-airgap

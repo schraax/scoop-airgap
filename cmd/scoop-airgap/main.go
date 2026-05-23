@@ -50,6 +50,11 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		return fmt.Errorf("init storage: %w", err)
 	}
 
+	authToken, err := resolveAuthToken(cfg.Git)
+	if err != nil {
+		return fmt.Errorf("resolve git auth: %w", err)
+	}
+
 	artifBaseURL := cfg.Storage.BaseURL + "/" + cfg.Storage.Repo
 
 	// Open one Repo handle per bucket; each has its own internal Git repo.
@@ -64,7 +69,7 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 			return fmt.Errorf("bucket %q: repo_url is required", b.Name)
 		}
 		localPath := localPathFor(cfg.Git.LocalPathBase, b.Name)
-		repo, err := gitrepo.New(b.RepoURL, cfg.Git.Branch, localPath, cfg.Git.AuthToken)
+		repo, err := gitrepo.New(b.RepoURL, cfg.Git.Branch, localPath, authToken)
 		if err != nil {
 			return fmt.Errorf("init repo for bucket %s: %w", b.Name, err)
 		}
@@ -196,6 +201,33 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		return fmt.Errorf("%d error(s) during sync", errCount)
 	}
 	return nil
+}
+
+// resolveAuthToken returns the effective git auth token: a GitHub App
+// installation token when github_app is configured, or auth_token otherwise.
+func resolveAuthToken(git config.GitConfig) (string, error) {
+	if git.GitHubApp == nil {
+		return git.AuthToken, nil
+	}
+	app := git.GitHubApp
+	if app.AppID == 0 {
+		return "", fmt.Errorf("github_app: app_id is required")
+	}
+	if app.InstallationID == 0 {
+		return "", fmt.Errorf("github_app: installation_id is required")
+	}
+	keyPEM := app.PrivateKey
+	if keyPEM == "" && app.PrivateKeyPath != "" {
+		data, err := os.ReadFile(app.PrivateKeyPath)
+		if err != nil {
+			return "", fmt.Errorf("read GitHub App private key from %s: %w", app.PrivateKeyPath, err)
+		}
+		keyPEM = string(data)
+	}
+	if keyPEM == "" {
+		return "", fmt.Errorf("github_app: private_key or private_key_path is required")
+	}
+	return gitrepo.ResolveGitHubAppToken(app.AppID, app.InstallationID, keyPEM)
 }
 
 // buildPRBody formats the list of updated apps for a pull request description.

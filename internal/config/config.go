@@ -37,8 +37,15 @@ type StorageConfig struct {
 // GitConfig holds defaults that apply to every bucket's internal Git repo.
 type GitConfig struct {
 	Branch string `yaml:"branch"`
-	// AuthToken is embedded into HTTPS clone URLs as https://token@host/...
+	// AuthToken is a personal access token embedded into HTTPS clone URLs.
+	// Mutually exclusive with GitHubApp — if GitHubApp is set, AuthToken
+	// is ignored.
 	AuthToken string `yaml:"auth_token"`
+	// GitHubApp configures GitHub App authentication as a more secure and
+	// auditable alternative to a personal access token. When set, a
+	// short-lived installation access token is fetched at startup and used
+	// for all git operations and PR API calls.
+	GitHubApp *GitHubAppConfig `yaml:"github_app"`
 	// LocalPathBase is the parent directory under which each bucket is cloned
 	// as {LocalPathBase}/{bucket_name}. A system temp dir is used if empty.
 	LocalPathBase string `yaml:"local_path_base"`
@@ -47,6 +54,22 @@ type GitConfig struct {
 	// true: push changes to a new branch and open a pull request so a human
 	// can review before the updated manifests go live.
 	PullRequest bool `yaml:"pull_request"`
+}
+
+// GitHubAppConfig holds the credentials for a GitHub App installation.
+type GitHubAppConfig struct {
+	// AppID is the numeric GitHub App ID shown on the app's settings page.
+	AppID int64 `yaml:"app_id"`
+	// InstallationID is the numeric ID of the installation to authenticate as.
+	// Find it in the URL when you click "Configure" on the app's installation.
+	InstallationID int64 `yaml:"installation_id"`
+	// PrivateKey is the RSA private key in PEM format. Use env-var expansion
+	// to avoid storing the key in the config file:
+	//   private_key: "${GITHUB_APP_PRIVATE_KEY}"
+	PrivateKey string `yaml:"private_key"`
+	// PrivateKeyPath is a path to a PEM file on disk. Use this instead of
+	// PrivateKey when the key is mounted as a file (e.g. a Kubernetes secret).
+	PrivateKeyPath string `yaml:"private_key_path"`
 }
 
 type BucketConfig struct {
