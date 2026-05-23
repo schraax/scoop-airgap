@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -148,25 +150,45 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		return nil
 	}
 
-	// Write manifests into their respective bucket repos.
+	// Write manifests into their respective bucket repos; track which apps
+	// changed per bucket so the PR body can list them.
 	repoByName := make(map[string]*gitrepo.Repo, len(bucketRepos))
 	for _, br := range bucketRepos {
 		repoByName[br.cfg.Name] = br.repo
 	}
+	updatedApps := make(map[string][]string)
 	for m := range manifestCh {
 		repo := repoByName[m.bucket]
 		if err := repo.WriteManifest(m.app, m.data); err != nil {
 			log.Printf("ERROR write manifest %s/%s: %v", m.bucket, m.app, err)
 			errCount++
+			continue
 		}
+		updatedApps[m.bucket] = append(updatedApps[m.bucket], m.app)
 	}
 
-	// Commit and push each bucket repo independently.
+	// Commit each bucket repo: push directly or open a PR depending on config.
 	for _, br := range bucketRepos {
-		log.Printf("committing and pushing bucket %s", br.cfg.Name)
-		if err := br.repo.CommitAndPush("sync: mirror scoop manifests to Artifactory"); err != nil {
-			log.Printf("ERROR git push for bucket %s: %v", br.cfg.Name, err)
-			errCount++
+		if cfg.Git.PullRequest {
+			prBranch := fmt.Sprintf("scoop-airgap/%s/%s",
+				br.cfg.Name, time.Now().UTC().Format("20060102-150405"))
+			prTitle := fmt.Sprintf("scoop-airgap: sync %s manifests (%s)",
+				br.cfg.Name, time.Now().UTC().Format("2006-01-02"))
+			log.Printf("opening PR for bucket %s (branch %s)", br.cfg.Name, prBranch)
+			if err := br.repo.CommitAndPR(
+				"sync: mirror scoop manifests",
+				prBranch, prTitle,
+				buildPRBody(updatedApps[br.cfg.Name]),
+			); err != nil {
+				log.Printf("ERROR PR for bucket %s: %v", br.cfg.Name, err)
+				errCount++
+			}
+		} else {
+			log.Printf("committing and pushing bucket %s", br.cfg.Name)
+			if err := br.repo.CommitAndPush("sync: mirror scoop manifests"); err != nil {
+				log.Printf("ERROR git push for bucket %s: %v", br.cfg.Name, err)
+				errCount++
+			}
 		}
 	}
 
@@ -174,6 +196,22 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		return fmt.Errorf("%d error(s) during sync", errCount)
 	}
 	return nil
+}
+
+// buildPRBody formats the list of updated apps for a pull request description.
+func buildPRBody(apps []string) string {
+	if len(apps) == 0 {
+		return "No manifest files were changed."
+	}
+	sort.Strings(apps)
+	var b strings.Builder
+	b.WriteString("Updated app manifests:\n\n")
+	for _, a := range apps {
+		b.WriteString("- ")
+		b.WriteString(a)
+		b.WriteByte('\n')
+	}
+	return b.String()
 }
 
 // localPathFor returns the clone directory for a bucket.

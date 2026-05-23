@@ -12,7 +12,9 @@ import (
 
 // Repo represents the local clone of the internal bucket Git repository.
 type Repo struct {
-	remoteURL string
+	remoteURL string // token-embedded URL used for git operations
+	cleanURL  string // plain URL without credentials, used for PR API calls
+	authToken string // raw token for PR API authentication
 	branch    string
 	localPath string
 }
@@ -20,6 +22,7 @@ type Repo struct {
 // New creates a Repo. If authToken is non-empty it is embedded into an HTTPS
 // URL as https://token@host/path, which works with Gitea, GitLab, and GitHub.
 func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
+	cleanURL := remoteURL
 	if authToken != "" {
 		u, err := url.Parse(remoteURL)
 		if err != nil {
@@ -35,7 +38,13 @@ func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
 		}
 		localPath = tmp
 	}
-	return &Repo{remoteURL: remoteURL, branch: branch, localPath: localPath}, nil
+	return &Repo{
+		remoteURL: remoteURL,
+		cleanURL:  cleanURL,
+		authToken: authToken,
+		branch:    branch,
+		localPath: localPath,
+	}, nil
 }
 
 // EnsureReady clones the repo if it is not already present, or pulls the
@@ -81,6 +90,43 @@ func (r *Repo) CommitAndPush(message string) error {
 		return err
 	}
 	return r.git("push", "origin", r.branch)
+}
+
+// CommitAndPR is like CommitAndPush but instead of pushing to the configured
+// branch it pushes the changes to prBranch and opens a pull request against
+// the base branch. Returns nil without opening a PR if there is nothing to
+// commit. The caller should choose a prBranch name that is unique per run
+// (e.g. include a timestamp).
+func (r *Repo) CommitAndPR(commitMsg, prBranch, prTitle, prBody string) error {
+	if err := r.git("add", "--all"); err != nil {
+		return err
+	}
+	out, err := r.gitOutput("status", "--porcelain")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(out) == "" {
+		return nil
+	}
+
+	if err := r.git("checkout", "-b", prBranch); err != nil {
+		return fmt.Errorf("create PR branch: %w", err)
+	}
+	if err := r.git("commit", "--message", commitMsg,
+		"--author", "scoop-airgap <scoop-airgap@noreply>"); err != nil {
+		return err
+	}
+	if err := r.git("push", "origin", prBranch); err != nil {
+		return fmt.Errorf("push PR branch: %w", err)
+	}
+	// Return to the base branch so EnsureReady works correctly on future runs.
+	if err := r.git("checkout", r.branch); err != nil {
+		return fmt.Errorf("checkout base branch after PR push: %w", err)
+	}
+	if err := CreatePR(r.cleanURL, r.authToken, r.branch, prBranch, prTitle, prBody); err != nil {
+		return fmt.Errorf("open pull request (branch %s was pushed; open it manually if needed): %w", prBranch, err)
+	}
+	return nil
 }
 
 // LocalPath returns the local working directory of the clone.

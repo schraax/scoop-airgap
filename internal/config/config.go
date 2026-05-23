@@ -36,12 +36,17 @@ type StorageConfig struct {
 
 // GitConfig holds defaults that apply to every bucket's internal Git repo.
 type GitConfig struct {
-	Branch      string `yaml:"branch"`
+	Branch string `yaml:"branch"`
 	// AuthToken is embedded into HTTPS clone URLs as https://token@host/...
-	AuthToken   string `yaml:"auth_token"`
+	AuthToken string `yaml:"auth_token"`
 	// LocalPathBase is the parent directory under which each bucket is cloned
 	// as {LocalPathBase}/{bucket_name}. A system temp dir is used if empty.
 	LocalPathBase string `yaml:"local_path_base"`
+	// PullRequest controls how manifest updates are delivered.
+	// false (default): commit and push directly to the configured branch.
+	// true: push changes to a new branch and open a pull request so a human
+	// can review before the updated manifests go live.
+	PullRequest bool `yaml:"pull_request"`
 }
 
 type BucketConfig struct {

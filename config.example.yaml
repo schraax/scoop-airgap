@@ -26,6 +26,12 @@ git:
   # Parent directory for clones; each bucket is placed at {local_path_base}/{name}.
   # A temporary directory is used if omitted.
   local_path_base: /var/cache/scoop-airgap
+  # Set to true to push manifest changes to a new branch and open a pull
+  # request instead of committing directly to `branch`. Useful when branch
+  # protection rules are in place and a human-in-the-loop review is required
+  # before updated manifests go live. Requires auth_token to have PR-creation
+  # permissions. Supports GitHub and Gitea/Forgejo.
+  pull_request: false
 
 # Number of concurrent downloads (default: 4)
 workers: 4
