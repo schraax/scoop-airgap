@@ -26,26 +26,47 @@ A fully annotated example is provided in [`config.example.yaml`](https://github.
 
 ---
 
-## `artifactory` block
+## `storage` block
 
 ```yaml
-artifactory:
+storage:
+  type: artifactory          # "artifactory" (default) or "generic"
   base_url: https://artifactory.example.com/artifactory
   repo: scoop-mirror
-  username: ${ARTIFACTORY_USER}      # omit to use api_key-only auth
-  api_key: ${ARTIFACTORY_API_KEY}
+  username: ${STORAGE_USER}  # omit for Artifactory API-key-only auth
+  password: ${STORAGE_PASSWORD}
 ```
 
 | Field | Required | Description |
 |---|---|---|
-| `base_url` | yes | Root URL of your Artifactory instance. Include the `/artifactory` path segment; do **not** include the repository name. |
-| `repo` | yes | Name of the generic Artifactory repository that will store installer binaries. |
-| `username` | no | If provided, Basic auth (`username:api_key`) is used. If omitted, the `X-JFrog-Art-Api` header is used instead. |
-| `api_key` | yes | API key or password for the Artifactory service account. Use `${ENV_VAR}` to avoid storing it in the file. |
+| `type` | no | `artifactory` (default) or `generic`. See below. |
+| `base_url` | yes | Root URL of the storage server, **without** the repository name and without a trailing slash. |
+| `repo` | yes | Repository name inside the storage server. |
+| `username` | no | Username for Basic auth. Omit when using Artifactory API-key-only auth. |
+| `password` | yes | Artifactory API key, Nexus password, or HTTP Basic auth password. Use `${ENV_VAR}` to avoid storing it in the file. |
 
-### Artifactory URL structure
+### Backend types
 
-Binaries are stored at:
+#### `artifactory` (default)
+
+JFrog Artifactory. When `username` is omitted the password is sent as the
+`X-JFrog-Art-Api` header. When `username` is set, Basic auth is used — both
+methods are accepted by Artifactory.
+
+#### `generic`
+
+Any HTTP server that accepts `PUT` for upload and `HEAD` for existence checks,
+authenticated with HTTP Basic auth. Tested backends:
+
+| Product | Setup notes |
+|---|---|
+| **Sonatype Nexus Repository OSS** | Create a *raw (hosted)* repository. Use the repository URL as `base_url` with `repository` in the path: `http://nexus:8081/repository`. |
+| **nginx** | Enable `ngx_http_dav_module`. Add `dav_methods PUT;` and `auth_basic` to the location block. |
+| **Caddy** | Use the `file_server` directive with `browse` disabled, and `basicauth` for write protection. |
+
+### Storage URL structure
+
+Binaries are stored at the same path layout regardless of backend:
 
 ```
 {base_url}/{repo}/{bucket}/{app}/{version}/{filename}
@@ -55,7 +76,10 @@ Example:
 
 ```
 https://artifactory.example.com/artifactory/scoop-mirror/main/git/2.43.0/Git-2.43.0-64-bit.exe
+http://nexus:8081/repository/scoop-mirror/main/git/2.43.0/Git-2.43.0-64-bit.exe
 ```
+
+This means switching backends only requires updating `type`, `base_url`, and credentials — the rewritten manifest URLs follow automatically.
 
 ---
 
@@ -160,8 +184,8 @@ All secrets should be passed as environment variables. Recommended names:
 
 | Variable | Used for |
 |---|---|
-| `ARTIFACTORY_USER` | Artifactory username |
-| `ARTIFACTORY_API_KEY` | Artifactory API key |
+| `STORAGE_USER` | Storage server username |
+| `STORAGE_PASSWORD` | Artifactory API key, Nexus password, or HTTP Basic auth password |
 | `GIT_AUTH_TOKEN` | Git server personal access token |
 
 ---
@@ -169,10 +193,10 @@ All secrets should be passed as environment variables. Recommended names:
 ## Complete minimal example
 
 ```yaml
-artifactory:
+storage:
   base_url: https://artifactory.example.com/artifactory
   repo: scoop-mirror
-  api_key: ${ARTIFACTORY_API_KEY}
+  password: ${STORAGE_PASSWORD}
 
 git:
   branch: main

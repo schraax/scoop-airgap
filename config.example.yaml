@@ -1,11 +1,23 @@
-artifactory:
-  # Root URL of the Artifactory instance (no trailing slash)
+storage:
+  # type selects the backend:
+  #   "artifactory" (default) — JFrog Artifactory; supports X-JFrog-Art-Api key auth
+  #   "generic"               — any HTTP server with PUT/HEAD + Basic auth
+  #                             (Nexus OSS raw repository, nginx WebDAV, Caddy, …)
+  type: artifactory
+
+  # Root URL of the storage server, without the repository name (no trailing slash).
+  # Artifactory: https://artifactory.example.com/artifactory
+  # Nexus OSS:   http://nexus:8081/repository
   base_url: https://artifactory.example.com/artifactory
-  # Generic repository name inside Artifactory
+
+  # Repository / bucket name inside the storage server.
   repo: scoop-mirror
-  # Credentials — use env-var expansion to keep secrets out of this file
-  username: ${ARTIFACTORY_USER}
-  api_key: ${ARTIFACTORY_API_KEY}
+
+  # Credentials — use env-var expansion to keep secrets out of this file.
+  # For Artifactory without a username the value is used as an API key
+  # (X-JFrog-Art-Api header). With a username, Basic auth is used instead.
+  username: ${STORAGE_USER}
+  password: ${STORAGE_PASSWORD}
 
 git:
   branch: main

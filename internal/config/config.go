@@ -8,22 +8,30 @@ import (
 )
 
 type Config struct {
-	Artifactory  ArtifactoryConfig `yaml:"artifactory"`
-	Git          GitConfig         `yaml:"git"`
-	Buckets      []BucketConfig    `yaml:"buckets"`
-	Workers      int               `yaml:"workers"`
+	Storage      StorageConfig `yaml:"storage"`
+	Git          GitConfig     `yaml:"git"`
+	Buckets      []BucketConfig `yaml:"buckets"`
+	Workers      int            `yaml:"workers"`
 	// CooldownDays skips any app version whose manifest was committed to the
 	// upstream bucket fewer than this many days ago. 0 disables the check.
-	CooldownDays int               `yaml:"cooldown_days"`
+	CooldownDays int            `yaml:"cooldown_days"`
 }
 
-type ArtifactoryConfig struct {
-	// BaseURL is the root URL of Artifactory, e.g. https://artifactory.example.com/artifactory
+type StorageConfig struct {
+	// Type selects the backend: "artifactory" (default) or "generic".
+	// "generic" uses plain Basic auth and is compatible with Nexus OSS
+	// raw repositories, nginx WebDAV, Caddy, and similar HTTP file servers.
+	Type     string `yaml:"type"`
+	// BaseURL is the root URL of the storage server, without the repo name.
+	// Artifactory example: https://artifactory.example.com/artifactory
+	// Nexus example:       http://nexus:8081/repository  (omit trailing slash)
 	BaseURL  string `yaml:"base_url"`
-	// Repo is the generic repository name in Artifactory
+	// Repo is the repository / bucket name inside the storage server.
 	Repo     string `yaml:"repo"`
 	Username string `yaml:"username"`
-	APIKey   string `yaml:"api_key"`
+	// Password is the Artifactory API key, Nexus password, or HTTP Basic auth
+	// password, depending on the backend type.
+	Password string `yaml:"password"`
 }
 
 // GitConfig holds defaults that apply to every bucket's internal Git repo.

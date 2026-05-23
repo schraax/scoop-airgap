@@ -9,18 +9,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andreasj/scoop-upstream/internal/artifactory"
 	"github.com/andreasj/scoop-upstream/internal/config"
 	"github.com/andreasj/scoop-upstream/internal/download"
 	"github.com/andreasj/scoop-upstream/internal/gitrepo"
 	"github.com/andreasj/scoop-upstream/internal/manifest"
+	"github.com/andreasj/scoop-upstream/internal/storage"
 )
 
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	dryRun := flag.Bool("dry-run", false, "print what would be done without making changes")
 	filterApp := flag.String("app", "", "sync only this app (optional)")
-	force := flag.Bool("force", false, "re-upload even if artifact already exists in Artifactory")
+	force := flag.Bool("force", false, "re-upload even if artifact already exists in the store")
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
@@ -34,13 +34,12 @@ func main() {
 }
 
 func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
-	artifClient := artifactory.New(
-		cfg.Artifactory.BaseURL+"/"+cfg.Artifactory.Repo,
-		cfg.Artifactory.Username,
-		cfg.Artifactory.APIKey,
-	)
+	store, err := storage.New(cfg.Storage)
+	if err != nil {
+		return fmt.Errorf("init storage: %w", err)
+	}
 
-	artifBaseURL := cfg.Artifactory.BaseURL + "/" + cfg.Artifactory.Repo
+	artifBaseURL := cfg.Storage.BaseURL + "/" + cfg.Storage.Repo
 
 	// Open one Repo handle per bucket; each has its own internal Git repo.
 	type bucketRepo struct {
@@ -112,7 +111,7 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		go func() {
 			defer wg.Done()
 			for j := range jobCh {
-				data, err := syncApp(j.bucket, j.app, artifBaseURL, artifClient, dryRun, force, cfg.CooldownDays)
+				data, err := syncApp(j.bucket, j.app, artifBaseURL, store, dryRun, force, cfg.CooldownDays)
 				resultCh <- result{j.bucket.Name, j.app, err}
 				if err == nil && data != nil {
 					manifestCh <- manifestResult{j.bucket.Name, j.app, data}
@@ -177,13 +176,13 @@ func localPathFor(base, bucketName string) string {
 	return filepath.Join(base, bucketName)
 }
 
-// syncApp fetches the public manifest, mirrors all artifacts to Artifactory,
+// syncApp fetches the public manifest, mirrors all artifacts to the store,
 // and returns the rewritten manifest JSON. Returns nil data on dry-run.
 func syncApp(
 	bucket config.BucketConfig,
 	app string,
 	artifBaseURL string,
-	artif *artifactory.Client,
+	store storage.Store,
 	dryRun bool,
 	force bool,
 	cooldownDays int,
@@ -218,12 +217,12 @@ func syncApp(
 		}
 
 		if !force {
-			exists, err := artif.Exists(ref.ArtifactPath)
+			exists, err := store.Exists(ref.ArtifactPath)
 			if err != nil {
 				log.Printf("WARN check exists %s: %v", ref.ArtifactPath, err)
 			}
 			if exists {
-				log.Printf("skip (already in Artifactory): %s", label)
+				log.Printf("skip (already in store): %s", label)
 				continue
 			}
 		}
@@ -235,7 +234,7 @@ func syncApp(
 		}
 
 		log.Printf("uploading %s", label)
-		if err := artif.Upload(ref.ArtifactPath, tmpFile); err != nil {
+		if err := store.Upload(ref.ArtifactPath, tmpFile); err != nil {
 			os.Remove(tmpFile)
 			return nil, fmt.Errorf("upload %s: %w", ref.ArtifactPath, err)
 		}
