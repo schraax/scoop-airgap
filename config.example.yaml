@@ -7,22 +7,24 @@ artifactory:
   username: ${ARTIFACTORY_USER}
   api_key: ${ARTIFACTORY_API_KEY}
 
-bucket_repo:
-  # Internal Git server hosting the adapted bucket definitions
-  url: https://git.example.com/scoop/internal-bucket.git
+git:
   branch: main
-  # Local path for the clone; a temp dir is used if left empty
-  local_path: /var/cache/scoop-upstream/bucket
-  # Optional: embed a token into the HTTPS URL (https://token@host/...)
+  # Optional: embedded into HTTPS clone URLs as https://token@host/...
   auth_token: ${GIT_AUTH_TOKEN}
+  # Parent directory for clones; each bucket is placed at {local_path_base}/{name}.
+  # A temporary directory is used if omitted.
+  local_path_base: /var/cache/scoop-upstream
 
 # Number of concurrent downloads (default: 4)
 workers: 4
 
 buckets:
   - name: main
-    # Raw-file base URL for the public bucket
+    # Raw-file base URL for the public upstream bucket
     url: https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket
+    # Internal Git repo that mirrors this bucket — same layout as the original,
+    # so clients add it with: scoop bucket add internal-main <repo_url>
+    repo_url: https://git.example.com/scoop/main.git
     apps:
       - git
       - curl
@@ -31,6 +33,7 @@ buckets:
 
   - name: extras
     url: https://raw.githubusercontent.com/ScoopInstaller/Extras/master/bucket
+    repo_url: https://git.example.com/scoop/extras.git
     apps:
       - vscode
       - notepadplusplus

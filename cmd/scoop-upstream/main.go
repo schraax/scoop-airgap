@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/andreasj/scoop-upstream/internal/artifactory"
@@ -38,43 +39,52 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		cfg.Artifactory.APIKey,
 	)
 
-	repo, err := gitrepo.New(
-		cfg.BucketRepo.URL,
-		cfg.BucketRepo.Branch,
-		cfg.BucketRepo.LocalPath,
-		cfg.BucketRepo.AuthToken,
-	)
-	if err != nil {
-		return fmt.Errorf("init bucket repo: %w", err)
-	}
-
-	if !dryRun {
-		log.Printf("cloning/pulling bucket repo %s", cfg.BucketRepo.URL)
-		if err := repo.EnsureReady(); err != nil {
-			return fmt.Errorf("prepare bucket repo: %w", err)
-		}
-	}
-
 	artifBaseURL := cfg.Artifactory.BaseURL + "/" + cfg.Artifactory.Repo
 
+	// Open one Repo handle per bucket; each has its own internal Git repo.
+	type bucketRepo struct {
+		cfg  config.BucketConfig
+		repo *gitrepo.Repo
+	}
+	var bucketRepos []bucketRepo
+
+	for _, b := range cfg.Buckets {
+		if b.RepoURL == "" {
+			return fmt.Errorf("bucket %q: repo_url is required", b.Name)
+		}
+		localPath := localPathFor(cfg.Git.LocalPathBase, b.Name)
+		repo, err := gitrepo.New(b.RepoURL, cfg.Git.Branch, localPath, cfg.Git.AuthToken)
+		if err != nil {
+			return fmt.Errorf("init repo for bucket %s: %w", b.Name, err)
+		}
+		if !dryRun {
+			log.Printf("cloning/pulling bucket repo %s → %s", b.RepoURL, localPath)
+			if err := repo.EnsureReady(); err != nil {
+				return fmt.Errorf("prepare repo for bucket %s: %w", b.Name, err)
+			}
+		}
+		bucketRepos = append(bucketRepos, bucketRepo{b, repo})
+	}
+
+	// Build the flat job list.
 	type job struct {
 		bucket config.BucketConfig
 		app    string
 	}
-
 	var jobs []job
-	for _, b := range cfg.Buckets {
-		for _, app := range b.Apps {
+	for _, br := range bucketRepos {
+		for _, app := range br.cfg.Apps {
 			if filterApp != "" && app != filterApp {
 				continue
 			}
-			jobs = append(jobs, job{b, app})
+			jobs = append(jobs, job{br.cfg, app})
 		}
 	}
 
-	type result struct {
-		bucket, app string
-		err         error
+	type manifestResult struct {
+		bucket string
+		app    string
+		data   []byte
 	}
 
 	jobCh := make(chan job, len(jobs))
@@ -83,21 +93,19 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 	}
 	close(jobCh)
 
+	type result struct {
+		bucket, app string
+		err         error
+	}
 	resultCh := make(chan result, len(jobs))
-	var wg sync.WaitGroup
+	manifestCh := make(chan manifestResult, len(jobs))
 
 	workers := cfg.Workers
 	if workers < 1 {
 		workers = 1
 	}
 
-	// results also carry the rewritten manifest; collect them for the Git step
-	type manifestResult struct {
-		bucket, app string
-		data        []byte
-	}
-	manifestCh := make(chan manifestResult, len(jobs))
-
+	var wg sync.WaitGroup
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
@@ -111,7 +119,6 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 			}
 		}()
 	}
-
 	wg.Wait()
 	close(resultCh)
 	close(manifestCh)
@@ -126,25 +133,47 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 
 	if dryRun {
 		log.Println("[dry-run] skipping Git commit/push")
+		if errCount > 0 {
+			return fmt.Errorf("%d app(s) had errors", errCount)
+		}
 		return nil
 	}
 
+	// Write manifests into their respective bucket repos.
+	repoByName := make(map[string]*gitrepo.Repo, len(bucketRepos))
+	for _, br := range bucketRepos {
+		repoByName[br.cfg.Name] = br.repo
+	}
 	for m := range manifestCh {
-		if err := repo.WriteManifest(m.bucket, m.app, m.data); err != nil {
+		repo := repoByName[m.bucket]
+		if err := repo.WriteManifest(m.app, m.data); err != nil {
 			log.Printf("ERROR write manifest %s/%s: %v", m.bucket, m.app, err)
 			errCount++
 		}
 	}
 
-	log.Println("committing and pushing mirrored manifests")
-	if err := repo.CommitAndPush("sync: mirror scoop manifests to Artifactory"); err != nil {
-		return fmt.Errorf("git push: %w", err)
+	// Commit and push each bucket repo independently.
+	for _, br := range bucketRepos {
+		log.Printf("committing and pushing bucket %s", br.cfg.Name)
+		if err := br.repo.CommitAndPush("sync: mirror scoop manifests to Artifactory"); err != nil {
+			log.Printf("ERROR git push for bucket %s: %v", br.cfg.Name, err)
+			errCount++
+		}
 	}
 
 	if errCount > 0 {
-		return fmt.Errorf("%d app(s) failed to sync", errCount)
+		return fmt.Errorf("%d error(s) during sync", errCount)
 	}
 	return nil
+}
+
+// localPathFor returns the clone directory for a bucket.
+// If base is empty a system temp dir is used.
+func localPathFor(base, bucketName string) string {
+	if base == "" {
+		return "" // gitrepo.New will create a temp dir
+	}
+	return filepath.Join(base, bucketName)
 }
 
 // syncApp fetches the public manifest, mirrors all artifacts to Artifactory,

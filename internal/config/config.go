@@ -9,7 +9,7 @@ import (
 
 type Config struct {
 	Artifactory ArtifactoryConfig `yaml:"artifactory"`
-	BucketRepo  BucketRepoConfig  `yaml:"bucket_repo"`
+	Git         GitConfig         `yaml:"git"`
 	Buckets     []BucketConfig    `yaml:"buckets"`
 	Workers     int               `yaml:"workers"`
 }
@@ -23,23 +23,28 @@ type ArtifactoryConfig struct {
 	APIKey   string `yaml:"api_key"`
 }
 
-type BucketRepoConfig struct {
-	// URL is the internal Git repository for adapted bucket manifests
-	URL       string `yaml:"url"`
-	Branch    string `yaml:"branch"`
-	// LocalPath is where the repo is cloned on disk (temp dir if empty)
-	LocalPath string `yaml:"local_path"`
-	// AuthToken is embedded into HTTPS clone URL as https://token@host/...
-	AuthToken string `yaml:"auth_token"`
+// GitConfig holds defaults that apply to every bucket's internal Git repo.
+type GitConfig struct {
+	Branch      string `yaml:"branch"`
+	// AuthToken is embedded into HTTPS clone URLs as https://token@host/...
+	AuthToken   string `yaml:"auth_token"`
+	// LocalPathBase is the parent directory under which each bucket is cloned
+	// as {LocalPathBase}/{bucket_name}. A system temp dir is used if empty.
+	LocalPathBase string `yaml:"local_path_base"`
 }
 
 type BucketConfig struct {
 	// Name is the bucket identifier, used as a path component in Artifactory
+	// and as the clone subdirectory under GitConfig.LocalPathBase.
 	Name string `yaml:"name"`
 	// URL is the base raw-file URL for the public bucket, e.g.
 	// https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket
-	URL  string   `yaml:"url"`
-	Apps []string `yaml:"apps"`
+	URL     string   `yaml:"url"`
+	// RepoURL is the internal Git repo that will serve adapted manifests for
+	// this bucket. Its layout must match a standard Scoop bucket repo so that
+	// clients can add it with `scoop bucket add <name> <RepoURL>`.
+	RepoURL string   `yaml:"repo_url"`
+	Apps    []string `yaml:"apps"`
 }
 
 func Load(path string) (*Config, error) {
@@ -58,8 +63,8 @@ func Load(path string) (*Config, error) {
 	if cfg.Workers <= 0 {
 		cfg.Workers = 4
 	}
-	if cfg.BucketRepo.Branch == "" {
-		cfg.BucketRepo.Branch = "main"
+	if cfg.Git.Branch == "" {
+		cfg.Git.Branch = "main"
 	}
 
 	return &cfg, nil

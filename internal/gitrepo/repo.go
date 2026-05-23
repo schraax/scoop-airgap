@@ -48,9 +48,10 @@ func (r *Repo) EnsureReady() error {
 }
 
 // WriteManifest writes the rewritten manifest JSON into the repo at
-// {localPath}/{bucketName}/{appName}.json, creating the directory if needed.
-func (r *Repo) WriteManifest(bucketName, appName string, data []byte) error {
-	dir := filepath.Join(r.localPath, bucketName)
+// bucket/{appName}.json — the standard Scoop bucket layout, so that clients
+// can add this repo with `scoop bucket add <name> <url>` unchanged.
+func (r *Repo) WriteManifest(appName string, data []byte) error {
+	dir := filepath.Join(r.localPath, "bucket")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dir, err)
 	}
