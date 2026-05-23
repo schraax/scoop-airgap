@@ -2,7 +2,7 @@ title: scoop-airgap
 description: Airgapped Scoop package mirroring for enterprise environments
 remote_theme: just-the-docs/just-the-docs@v0.10.0
 
-url: ""   # set to your GitHub Pages URL, e.g. https://yourorg.github.io
+url: "https://schraax.github.io"
 baseurl: "/scoop-airgap"
 
 # just-the-docs settings
