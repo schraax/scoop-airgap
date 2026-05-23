@@ -88,15 +88,34 @@ This means switching backends only requires updating `type`, `base_url`, and cre
 ```yaml
 git:
   branch: main
-  auth_token: ${GIT_AUTH_TOKEN}
+
+  # Authentication — choose one:
+  auth_token: ${GIT_AUTH_TOKEN}          # personal access token / deploy token
+
+  # github_app:                          # GitHub App (recommended for production)
+  #   app_id: 123456
+  #   installation_id: 78901234
+  #   private_key: "${GITHUB_APP_PRIVATE_KEY}"
+  #   # private_key_path: /run/secrets/github-app.pem
+
+  # api_url: https://github.corp.com/api/v3  # GitHub Enterprise Server only
+
+  pull_request: false                    # set true to open PRs instead of pushing
   local_path_base: /var/cache/scoop-airgap
 ```
 
 | Field | Required | Description |
 |---|---|---|
 | `branch` | no | Branch to clone and push to. Defaults to `main`. |
-| `auth_token` | no | Personal access token or deploy token. When set it is embedded in the HTTPS clone URL as `https://token@host/path`. Works with Gitea, GitLab, GitHub, Azure DevOps, and Bitbucket. |
-| `local_path_base` | no | Parent directory for local clones. Each bucket is cloned as `{local_path_base}/{bucket_name}`. If omitted, a system temp directory is used (the clone is lost after each run, meaning a fresh clone on every invocation). |
+| `auth_token` | no | Personal access token or deploy token. Mutually exclusive with `github_app` — ignored when `github_app` is set. |
+| `github_app` | no | GitHub App credentials. When set, a short-lived installation token is obtained at startup and used for all git operations and PR API calls. See [GitHub App Setup]({{ '/operator/github-app/' | relative_url }}) for a step-by-step guide. |
+| `github_app.app_id` | — | Numeric App ID shown on the app's settings page. |
+| `github_app.installation_id` | — | Numeric installation ID from the installation URL. |
+| `github_app.private_key` | — | RSA private key in PEM format. Use `${ENV_VAR}` expansion to avoid storing the key in the config file. |
+| `github_app.private_key_path` | — | Path to a PEM file on disk. Use instead of `private_key` when the key is mounted as a file (e.g. a Kubernetes secret). |
+| `api_url` | no | GitHub REST API base URL. **Required for GitHub Enterprise Server** (e.g. `https://github.corp.com/api/v3`). Leave empty for github.com (auto-detected) or Gitea/Forgejo (auto-detected from the repo host). |
+| `pull_request` | no | `false` (default): push commits directly to `branch`. `true`: push to a timestamped branch and open a pull request for human review before manifests go live. Requires the GitHub App (or token) to have `Pull requests: Read and write` permission. |
+| `local_path_base` | no | Parent directory for local clones. Each bucket is cloned as `{local_path_base}/{bucket_name}`. If omitted, a system temp directory is used (fresh clone every run). |
 
 {: .note }
 If using SSH authentication instead of a token, leave `auth_token` empty and ensure the host running scoop-airgap has the correct SSH key loaded. The `git` binary on `PATH` will handle SSH authentication transparently.
