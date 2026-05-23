@@ -131,6 +131,29 @@ Number of concurrent download/upload workers. Defaults to `4`. Increase for fast
 
 ---
 
+## `cooldown_days`
+
+```yaml
+cooldown_days: 3
+```
+
+When set to a positive integer, scoop-upstream skips any app version whose manifest was committed to the upstream bucket fewer than this many days ago. This prevents brand-new releases — which may contain regressions or be quickly superseded by a hotfix — from entering the internal mirror immediately.
+
+How it works: for each app, scoop-upstream queries the GitHub REST API for the most recent commit that touched `bucket/{app}.json`. If that commit is younger than `cooldown_days`, the app is skipped for this run. On the next scheduled run (once the cooldown has elapsed) it will be picked up automatically.
+
+| Value | Behaviour |
+|---|---|
+| `0` (default) | No cooldown check; all available versions are mirrored immediately. |
+| `3` | Wait three days after a new version appears before mirroring it. |
+| `7` | Wait one week — a common choice for production environments. |
+
+**Limitations:**
+- Only GitHub-hosted buckets (`raw.githubusercontent.com`) are supported. For other hosts the check is silently skipped and the app is mirrored normally.
+- The GitHub REST API allows 60 unauthenticated requests per hour. With many apps this limit can be reached. Set the `GITHUB_TOKEN` environment variable (any valid personal access token, no specific scopes required) to raise the limit to 5 000 requests per hour.
+- If the API call fails for any reason, a warning is logged and the app is mirrored anyway (fail-open).
+
+---
+
 ## Environment variables
 
 All secrets should be passed as environment variables. Recommended names:

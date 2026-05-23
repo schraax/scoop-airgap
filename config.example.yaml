@@ -18,6 +18,12 @@ git:
 # Number of concurrent downloads (default: 4)
 workers: 4
 
+# Only mirror a version if its manifest has been in the upstream bucket for at
+# least this many days. Protects against pulling brand-new releases before they
+# have been validated by the broader community. 0 disables the check (default).
+# Requires the bucket URL to be hosted on raw.githubusercontent.com.
+cooldown_days: 3
+
 buckets:
   - name: main
     # Raw-file base URL for the public upstream bucket

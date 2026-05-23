@@ -8,10 +8,13 @@ import (
 )
 
 type Config struct {
-	Artifactory ArtifactoryConfig `yaml:"artifactory"`
-	Git         GitConfig         `yaml:"git"`
-	Buckets     []BucketConfig    `yaml:"buckets"`
-	Workers     int               `yaml:"workers"`
+	Artifactory  ArtifactoryConfig `yaml:"artifactory"`
+	Git          GitConfig         `yaml:"git"`
+	Buckets      []BucketConfig    `yaml:"buckets"`
+	Workers      int               `yaml:"workers"`
+	// CooldownDays skips any app version whose manifest was committed to the
+	// upstream bucket fewer than this many days ago. 0 disables the check.
+	CooldownDays int               `yaml:"cooldown_days"`
 }
 
 type ArtifactoryConfig struct {

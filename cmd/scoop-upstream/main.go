@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/andreasj/scoop-upstream/internal/artifactory"
 	"github.com/andreasj/scoop-upstream/internal/config"
@@ -111,7 +112,7 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 		go func() {
 			defer wg.Done()
 			for j := range jobCh {
-				data, err := syncApp(j.bucket, j.app, artifBaseURL, artifClient, dryRun, force)
+				data, err := syncApp(j.bucket, j.app, artifBaseURL, artifClient, dryRun, force, cfg.CooldownDays)
 				resultCh <- result{j.bucket.Name, j.app, err}
 				if err == nil && data != nil {
 					manifestCh <- manifestResult{j.bucket.Name, j.app, data}
@@ -185,10 +186,22 @@ func syncApp(
 	artif *artifactory.Client,
 	dryRun bool,
 	force bool,
+	cooldownDays int,
 ) ([]byte, error) {
 	doc, version, err := manifest.Fetch(bucket.URL, app)
 	if err != nil {
 		return nil, err
+	}
+
+	if cooldownDays > 0 {
+		age, err := manifest.CommitAge(bucket.URL, app)
+		if err != nil {
+			log.Printf("WARN %s/%s: cooldown check failed, proceeding anyway: %v", bucket.Name, app, err)
+		} else if age > 0 && age < time.Duration(cooldownDays)*24*time.Hour {
+			log.Printf("skip (cooldown %dd, age %.1fd): %s/%s@%s",
+				cooldownDays, age.Hours()/24, bucket.Name, app, version)
+			return nil, nil
+		}
 	}
 
 	refs, err := manifest.Process(doc, bucket.Name, app, version, artifBaseURL)

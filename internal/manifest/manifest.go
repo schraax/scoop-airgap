@@ -10,8 +10,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 // ArtifactRef describes one file that must be mirrored.
@@ -124,6 +126,83 @@ func Process(doc map[string]interface{}, bucket, app, version, artifBaseURL stri
 // Marshal serialises the (potentially rewritten) manifest back to indented JSON.
 func Marshal(doc map[string]interface{}) ([]byte, error) {
 	return json.MarshalIndent(doc, "", "    ")
+}
+
+// CommitAge returns how long ago the manifest file was last committed in the
+// upstream bucket repository. This is used to implement the cooldown period:
+// versions that were published very recently are skipped until they stabilise.
+//
+// Only GitHub-hosted buckets are supported (raw.githubusercontent.com URLs).
+// For any other host, (0, nil) is returned and the caller should treat it as
+// "cooldown check not available, proceed normally".
+//
+// The GitHub REST API allows 60 unauthenticated requests per hour. Set the
+// GITHUB_TOKEN environment variable to raise this limit to 5 000/hour.
+func CommitAge(bucketURL, app string) (time.Duration, error) {
+	owner, repo, branch, ok := parseGitHubRawURL(bucketURL)
+	if !ok {
+		return 0, nil
+	}
+
+	apiURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/commits?path=bucket/%s.json&sha=%s&per_page=1",
+		owner, repo, app, branch,
+	)
+
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	if tok := githubToken(); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("GitHub API %s: %w", apiURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("GitHub API %s: HTTP %d: %s", apiURL, resp.StatusCode, body)
+	}
+
+	var commits []struct {
+		Commit struct {
+			Committer struct {
+				Date time.Time `json:"date"`
+			} `json:"committer"`
+		} `json:"commit"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&commits); err != nil {
+		return 0, fmt.Errorf("decode GitHub API response: %w", err)
+	}
+	if len(commits) == 0 {
+		return 0, fmt.Errorf("no commits found for bucket/%s.json in %s/%s", app, owner, repo)
+	}
+
+	return time.Since(commits[0].Commit.Committer.Date), nil
+}
+
+// parseGitHubRawURL extracts owner, repo, and branch from a raw.githubusercontent.com URL.
+// Returns ok=false for any other host.
+func parseGitHubRawURL(rawBucketURL string) (owner, repo, branch string, ok bool) {
+	u, err := url.Parse(rawBucketURL)
+	if err != nil || u.Host != "raw.githubusercontent.com" {
+		return "", "", "", false
+	}
+	// Path: /{owner}/{repo}/{branch}/bucket
+	parts := strings.SplitN(strings.TrimPrefix(u.Path, "/"), "/", 5)
+	if len(parts) < 4 || parts[3] != "bucket" {
+		return "", "", "", false
+	}
+	return parts[0], parts[1], parts[2], true
+}
+
+func githubToken() string {
+	return os.Getenv("GITHUB_TOKEN")
 }
 
 // extractURLsHashes reads parallel url+hash fields from a map node.
