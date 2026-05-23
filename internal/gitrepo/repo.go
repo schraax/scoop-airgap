@@ -15,23 +15,27 @@ type Repo struct {
 	remoteURL string // token-embedded URL used for git operations
 	cleanURL  string // plain URL without credentials, used for PR API calls
 	authToken string // raw token for PR API authentication
+	apiURL    string // GitHub/GHES API base (empty → auto-detect per host)
 	branch    string
 	localPath string
 }
 
-// New creates a Repo. If authToken is non-empty it is embedded into the HTTPS
-// URL for git operations. On github.com the token is set as the password with
-// "x-access-token" as the username, which is required for GitHub App
-// installation tokens and works equally well for PATs. On other hosts the
-// token is set as the username (Gitea / Forgejo convention).
-func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
+// New creates a Repo. apiURL is the GitHub REST API base (e.g.
+// "https://api.github.com" or "https://github.corp.com/api/v3"); leave empty
+// for auto-detection (github.com → GitHub API, anything else → Gitea API).
+//
+// When authToken is non-empty it is embedded into the HTTPS URL. GitHub and
+// GHES require "x-access-token:{token}"; Gitea/Forgejo use the token as the
+// username. The apiURL parameter determines which convention is used.
+func New(remoteURL, branch, localPath, authToken, apiURL string) (*Repo, error) {
 	cleanURL := remoteURL
 	if authToken != "" {
 		u, err := url.Parse(remoteURL)
 		if err != nil {
 			return nil, fmt.Errorf("parse repo URL: %w", err)
 		}
-		if u.Host == "github.com" {
+		// GitHub-style auth: explicit apiURL means GitHub/GHES; also detect github.com.
+		if apiURL != "" || u.Host == "github.com" {
 			u.User = url.UserPassword("x-access-token", authToken)
 		} else {
 			u.User = url.User(authToken)
@@ -49,6 +53,7 @@ func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
 		remoteURL: remoteURL,
 		cleanURL:  cleanURL,
 		authToken: authToken,
+		apiURL:    apiURL,
 		branch:    branch,
 		localPath: localPath,
 	}, nil
@@ -130,7 +135,7 @@ func (r *Repo) CommitAndPR(commitMsg, prBranch, prTitle, prBody string) error {
 	if err := r.git("checkout", r.branch); err != nil {
 		return fmt.Errorf("checkout base branch after PR push: %w", err)
 	}
-	if err := CreatePR(r.cleanURL, r.authToken, r.branch, prBranch, prTitle, prBody); err != nil {
+	if err := CreatePR(r.cleanURL, r.authToken, r.apiURL, r.branch, prBranch, prTitle, prBody); err != nil {
 		return fmt.Errorf("open pull request (branch %s was pushed; open it manually if needed): %w", prBranch, err)
 	}
 	return nil

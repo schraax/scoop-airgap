@@ -17,10 +17,11 @@ type prRequest struct {
 }
 
 // CreatePR opens a pull request from head into base on the remote platform.
-// It auto-detects GitHub (github.com) from the URL and falls back to the
-// Gitea/Forgejo-compatible API for any other host.
-func CreatePR(remoteURL, authToken, base, head, title, body string) error {
-	endpoint, authHeader, err := prEndpoint(remoteURL, authToken)
+// apiURL is the GitHub REST API base (e.g. "https://api.github.com" or
+// "https://github.corp.com/api/v3"). Pass empty to auto-detect: github.com
+// uses the GitHub API, all other hosts are treated as Gitea/Forgejo.
+func CreatePR(remoteURL, authToken, apiURL, base, head, title, body string) error {
+	endpoint, authHeader, err := prEndpoint(remoteURL, authToken, apiURL)
 	if err != nil {
 		return err
 	}
@@ -51,9 +52,11 @@ func CreatePR(remoteURL, authToken, base, head, title, body string) error {
 	return nil
 }
 
-// prEndpoint derives the full PR API endpoint URL and the Authorization header
-// value from the repository remote URL and token.
-func prEndpoint(remoteURL, authToken string) (endpoint, authHeader string, err error) {
+// prEndpoint derives the full PR API endpoint URL and Authorization header.
+// apiURL overrides auto-detection: pass the GitHub REST API base explicitly
+// for GitHub Enterprise Server (e.g. "https://github.corp.com/api/v3").
+// Empty apiURL auto-detects: github.com → GitHub API, others → Gitea/Forgejo.
+func prEndpoint(remoteURL, authToken, apiURL string) (endpoint, authHeader string, err error) {
 	u, err := url.Parse(remoteURL)
 	if err != nil {
 		return "", "", fmt.Errorf("parse remote URL %q: %w", remoteURL, err)
@@ -68,12 +71,16 @@ func prEndpoint(remoteURL, authToken string) (endpoint, authHeader string, err e
 	owner, repo := parts[0], parts[1]
 
 	var apiRoot, tokenScheme string
-	if u.Host == "github.com" {
-		// GitHub.com — dedicated API host, Bearer token
+	switch {
+	case apiURL != "":
+		// Explicit GitHub-style base (github.com or GHES)
+		apiRoot = apiURL
+		tokenScheme = "Bearer"
+	case u.Host == "github.com":
 		apiRoot = "https://api.github.com"
 		tokenScheme = "Bearer"
-	} else {
-		// Gitea / Forgejo / self-hosted — API is at /api/v1 on the same host
+	default:
+		// Gitea / Forgejo — API lives at /api/v1 on the same host
 		apiRoot = u.Scheme + "://" + u.Host + "/api/v1"
 		tokenScheme = "token"
 	}

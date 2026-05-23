@@ -69,7 +69,7 @@ func run(cfg *config.Config, dryRun bool, filterApp string, force bool) error {
 			return fmt.Errorf("bucket %q: repo_url is required", b.Name)
 		}
 		localPath := localPathFor(cfg.Git.LocalPathBase, b.Name)
-		repo, err := gitrepo.New(b.RepoURL, cfg.Git.Branch, localPath, authToken)
+		repo, err := gitrepo.New(b.RepoURL, cfg.Git.Branch, localPath, authToken, cfg.Git.APIURL)
 		if err != nil {
 			return fmt.Errorf("init repo for bucket %s: %w", b.Name, err)
 		}
@@ -227,7 +227,7 @@ func resolveAuthToken(git config.GitConfig) (string, error) {
 	if keyPEM == "" {
 		return "", fmt.Errorf("github_app: private_key or private_key_path is required")
 	}
-	return gitrepo.ResolveGitHubAppToken(app.AppID, app.InstallationID, keyPEM)
+	return gitrepo.ResolveGitHubAppToken(app.AppID, app.InstallationID, keyPEM, git.APIURL)
 }
 
 // buildPRBody formats the list of updated apps for a pull request description.

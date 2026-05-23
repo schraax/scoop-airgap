@@ -46,6 +46,11 @@ type GitConfig struct {
 	// short-lived installation access token is fetched at startup and used
 	// for all git operations and PR API calls.
 	GitHubApp *GitHubAppConfig `yaml:"github_app"`
+	// APIURL is the GitHub REST API base URL. Leave empty for github.com
+	// (auto-detected) and Gitea/Forgejo (auto-detected from repo URL).
+	// Set explicitly for GitHub Enterprise Server, e.g.:
+	//   api_url: https://github.corp.com/api/v3
+	APIURL string `yaml:"api_url"`
 	// LocalPathBase is the parent directory under which each bucket is cloned
 	// as {LocalPathBase}/{bucket_name}. A system temp dir is used if empty.
 	LocalPathBase string `yaml:"local_path_base"`

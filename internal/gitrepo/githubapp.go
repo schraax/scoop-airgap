@@ -18,14 +18,16 @@ import (
 
 // ResolveGitHubAppToken generates a short-lived GitHub App installation access
 // token. privateKeyPEM must be the RSA private key in PEM format (PKCS#1 or
-// PKCS#8). The returned token is valid for up to one hour and can be used for
-// both HTTPS git operations and the PR API.
-func ResolveGitHubAppToken(appID, installationID int64, privateKeyPEM string) (string, error) {
+// PKCS#8). apiBase is the GitHub REST API root; pass empty for github.com
+// ("https://api.github.com") or set it for GitHub Enterprise Server
+// (e.g. "https://github.corp.com/api/v3"). The returned token is valid for
+// up to one hour and can be used for both HTTPS git operations and PR API calls.
+func ResolveGitHubAppToken(appID, installationID int64, privateKeyPEM, apiBase string) (string, error) {
 	jwt, err := newAppJWT(appID, privateKeyPEM)
 	if err != nil {
 		return "", fmt.Errorf("generate GitHub App JWT: %w", err)
 	}
-	return exchangeInstallationToken(jwt, installationID)
+	return exchangeInstallationToken(jwt, installationID, apiBase)
 }
 
 // newAppJWT builds a signed RS256 JWT suitable for the GitHub Apps REST API.
@@ -53,9 +55,13 @@ func newAppJWT(appID int64, privateKeyPEM string) (string, error) {
 }
 
 // exchangeInstallationToken calls the GitHub Apps API to exchange a JWT for an
-// installation access token.
-func exchangeInstallationToken(jwt string, installationID int64) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/app/installations/%d/access_tokens", installationID)
+// installation access token. apiBase defaults to "https://api.github.com" when
+// empty; set it to the GHES API root for GitHub Enterprise Server.
+func exchangeInstallationToken(jwt string, installationID int64, apiBase string) (string, error) {
+	if apiBase == "" {
+		apiBase = "https://api.github.com"
+	}
+	url := fmt.Sprintf("%s/app/installations/%d/access_tokens", apiBase, installationID)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
 	if err != nil {
 		return "", err

@@ -38,6 +38,10 @@ git:
   #   private_key: "${GITHUB_APP_PRIVATE_KEY}"
   #   # Or point to a PEM file (e.g. a mounted Kubernetes secret):
   #   # private_key_path: /run/secrets/github-app.pem
+
+  # GitHub Enterprise Server: set api_url to the GHES REST API root.
+  # Leave unset for github.com (auto-detected) or Gitea/Forgejo (auto-detected).
+  # api_url: https://github.corp.com/api/v3
   # Parent directory for clones; each bucket is placed at {local_path_base}/{name}.
   # A temporary directory is used if omitted.
   local_path_base: /var/cache/scoop-airgap
