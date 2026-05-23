@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andreasj/scoop-upstream/internal/config"
-	"github.com/andreasj/scoop-upstream/internal/download"
-	"github.com/andreasj/scoop-upstream/internal/gitrepo"
-	"github.com/andreasj/scoop-upstream/internal/manifest"
-	"github.com/andreasj/scoop-upstream/internal/storage"
+	"github.com/andreasj/scoop-airgap/internal/config"
+	"github.com/andreasj/scoop-airgap/internal/download"
+	"github.com/andreasj/scoop-airgap/internal/gitrepo"
+	"github.com/andreasj/scoop-airgap/internal/manifest"
+	"github.com/andreasj/scoop-airgap/internal/storage"
 )
 
 func main() {

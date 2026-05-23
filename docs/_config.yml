@@ -1,9 +1,9 @@
-title: scoop-upstream
+title: scoop-airgap
 description: Airgapped Scoop package mirroring for enterprise environments
 remote_theme: just-the-docs/just-the-docs@v0.10.0
 
 url: ""   # set to your GitHub Pages URL, e.g. https://yourorg.github.io
-baseurl: "/scoop-upstream"
+baseurl: "/scoop-airgap"
 
 # just-the-docs settings
 color_scheme: light
@@ -12,7 +12,7 @@ heading_anchors: true
 
 nav_sort: order   # use nav_order front matter
 
-footer_content: "scoop-upstream — MIT License"
+footer_content: "scoop-airgap — MIT License"
 
 plugins:
   - jekyll-seo-tag

@@ -24,16 +24,16 @@ nav_order: 1
 | `git` | Must be on `PATH`; used for cloning/pushing bucket repos |
 | Artifactory instance | A generic repository (any edition, including OSS) |
 | Internal Git server | Gitea, GitLab, Bitbucket, Azure DevOps, or any standard Git host |
-| Internet access | The host running scoop-upstream must be able to reach GitHub and software vendor download sites |
+| Internet access | The host running scoop-airgap must be able to reach GitHub and software vendor download sites |
 
 ---
 
 ## Build from source
 
 ```bash
-git clone https://github.com/yourorg/scoop-upstream.git
-cd scoop-upstream
-go build -o scoop-upstream ./cmd/scoop-upstream
+git clone https://github.com/yourorg/scoop-airgap.git
+cd scoop-airgap
+go build -o scoop-airgap ./cmd/scoop-airgap
 ```
 
 The result is a single static binary with no runtime dependencies.
@@ -41,7 +41,7 @@ The result is a single static binary with no runtime dependencies.
 To cross-compile for a different architecture:
 
 ```bash
-GOOS=linux GOARCH=amd64 go build -o scoop-upstream-linux-amd64 ./cmd/scoop-upstream
+GOOS=linux GOARCH=amd64 go build -o scoop-airgap-linux-amd64 ./cmd/scoop-airgap
 ```
 
 ---
@@ -60,15 +60,15 @@ The repository ships a `Dockerfile` that uses a two-stage build:
 Build and push to your internal registry:
 
 ```bash
-docker build -t registry.example.com/scoop-upstream:latest .
-docker push registry.example.com/scoop-upstream:latest
+docker build -t registry.example.com/scoop-airgap:latest .
+docker push registry.example.com/scoop-airgap:latest
 ```
 
 The runtime image runs as non-root (uid `65532`) by default. Ensure any host directories you bind-mount are writable by that uid:
 
 ```bash
-mkdir -p /var/cache/scoop-upstream
-chown -R 65532:65532 /var/cache/scoop-upstream
+mkdir -p /var/cache/scoop-airgap
+chown -R 65532:65532 /var/cache/scoop-airgap
 ```
 
 ### Pinning image digests
@@ -95,7 +95,7 @@ Then replace `:latest` with `@sha256:<digest>` in the `Dockerfile`.
 
 ## Prepare internal Git repos
 
-Create one Git repository per bucket you intend to mirror. The repository can be completely empty; scoop-upstream will populate the `bucket/` directory on the first run.
+Create one Git repository per bucket you intend to mirror. The repository can be completely empty; scoop-airgap will populate the `bucket/` directory on the first run.
 
 ```bash
 # Example using the GitHub CLI — adapt for your Git server
@@ -103,6 +103,6 @@ gh repo create yourorg/scoop-main --private
 gh repo create yourorg/scoop-extras --private
 ```
 
-Grant the service account used by scoop-upstream **push** access to each repo.
+Grant the service account used by scoop-airgap **push** access to each repo.
 
 If you are using an access token for HTTPS authentication, store it in an environment variable (e.g. `GIT_AUTH_TOKEN`) and reference it in the config. See [Configuration](configuration.md) for details.

@@ -16,19 +16,19 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build \
       -ldflags="-s -w" \
       -trimpath \
-      -o /scoop-upstream \
-      ./cmd/scoop-upstream
+      -o /scoop-airgap \
+      ./cmd/scoop-airgap
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
 # cgr.dev/chainguard/git is a distroless-style image: no shell, no package
 # manager, only git and CA certificates. Runs as non-root (uid 65532) by default.
 FROM cgr.dev/chainguard/git:latest
 
-COPY --from=build /scoop-upstream /usr/local/bin/scoop-upstream
+COPY --from=build /scoop-airgap /usr/local/bin/scoop-airgap
 
 # /config  — mount a read-only ConfigMap or bind-mount containing config.yaml
 # /cache   — persistent volume for git clones; avoids re-cloning on every run
 VOLUME ["/config", "/cache"]
 
-ENTRYPOINT ["scoop-upstream"]
+ENTRYPOINT ["scoop-airgap"]
 CMD ["-config", "/config/config.yaml"]

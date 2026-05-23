@@ -18,11 +18,11 @@ nav_order: 2
 
 ## Config file
 
-scoop-upstream reads a YAML file (default: `config.yaml` in the working directory). Pass a different path with `-config /path/to/config.yaml`.
+scoop-airgap reads a YAML file (default: `config.yaml` in the working directory). Pass a different path with `-config /path/to/config.yaml`.
 
 All string values support `${ENV_VAR}` expansion so that secrets never need to be written into the file.
 
-A fully annotated example is provided in [`config.example.yaml`](https://github.com/yourorg/scoop-upstream/blob/master/config.example.yaml) at the root of the repository.
+A fully annotated example is provided in [`config.example.yaml`](https://github.com/yourorg/scoop-airgap/blob/master/config.example.yaml) at the root of the repository.
 
 ---
 
@@ -89,7 +89,7 @@ This means switching backends only requires updating `type`, `base_url`, and cre
 git:
   branch: main
   auth_token: ${GIT_AUTH_TOKEN}
-  local_path_base: /var/cache/scoop-upstream
+  local_path_base: /var/cache/scoop-airgap
 ```
 
 | Field | Required | Description |
@@ -99,7 +99,7 @@ git:
 | `local_path_base` | no | Parent directory for local clones. Each bucket is cloned as `{local_path_base}/{bucket_name}`. If omitted, a system temp directory is used (the clone is lost after each run, meaning a fresh clone on every invocation). |
 
 {: .note }
-If using SSH authentication instead of a token, leave `auth_token` empty and ensure the host running scoop-upstream has the correct SSH key loaded. The `git` binary on `PATH` will handle SSH authentication transparently.
+If using SSH authentication instead of a token, leave `auth_token` empty and ensure the host running scoop-airgap has the correct SSH key loaded. The `git` binary on `PATH` will handle SSH authentication transparently.
 
 ---
 
@@ -161,9 +161,9 @@ Number of concurrent download/upload workers. Defaults to `4`. Increase for fast
 cooldown_days: 3
 ```
 
-When set to a positive integer, scoop-upstream skips any app version whose manifest was committed to the upstream bucket fewer than this many days ago. This prevents brand-new releases — which may contain regressions or be quickly superseded by a hotfix — from entering the internal mirror immediately.
+When set to a positive integer, scoop-airgap skips any app version whose manifest was committed to the upstream bucket fewer than this many days ago. This prevents brand-new releases — which may contain regressions or be quickly superseded by a hotfix — from entering the internal mirror immediately.
 
-How it works: for each app, scoop-upstream queries the GitHub REST API for the most recent commit that touched `bucket/{app}.json`. If that commit is younger than `cooldown_days`, the app is skipped for this run. On the next scheduled run (once the cooldown has elapsed) it will be picked up automatically.
+How it works: for each app, scoop-airgap queries the GitHub REST API for the most recent commit that touched `bucket/{app}.json`. If that commit is younger than `cooldown_days`, the app is skipped for this run. On the next scheduled run (once the cooldown has elapsed) it will be picked up automatically.
 
 | Value | Behaviour |
 |---|---|
@@ -201,7 +201,7 @@ storage:
 git:
   branch: main
   auth_token: ${GIT_AUTH_TOKEN}
-  local_path_base: /var/cache/scoop-upstream
+  local_path_base: /var/cache/scoop-airgap
 
 buckets:
   - name: main

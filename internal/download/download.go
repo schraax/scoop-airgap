@@ -19,7 +19,7 @@ import (
 // empty to skip verification), and returns the temp file path.
 // The caller is responsible for removing the file when done.
 func ToTemp(rawURL, expectedHash string) (string, error) {
-	tmp, err := os.CreateTemp("", "scoop-upstream-*")
+	tmp, err := os.CreateTemp("", "scoop-airgap-*")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}

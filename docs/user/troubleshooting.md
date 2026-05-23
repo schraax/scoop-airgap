@@ -82,7 +82,7 @@ fatal: unable to access 'https://git.example.com/scoop/main.git/': Could not res
 
 **Cause:** The internal mirror has not yet been synced with the latest upstream version.
 
-**Fix:** Contact your IT team and ask them to run a scoop-upstream sync to pick up the new version.
+**Fix:** Contact your IT team and ask them to run a scoop-airgap sync to pick up the new version.
 
 ---
 

@@ -17,7 +17,7 @@ nav_order: 2
 
 ## Components
 
-### scoop-upstream (this tool)
+### scoop-airgap (this tool)
 
 A single statically-linked Go binary. It is the only component that needs internet access. It is intended to run periodically — for example as a container in a cron job or a CI pipeline — on a host that bridges the public internet and the internal network.
 
@@ -36,7 +36,7 @@ scoop-mirror/main/git/2.43.0/Git-2.43.0-64-bit.exe
 scoop-mirror/extras/vscode/1.88.0/VSCodeSetup-x64-1.88.0.exe
 ```
 
-Because scoop-upstream checks for existence before uploading, reruns are cheap — only new versions are transferred.
+Because scoop-airgap checks for existence before uploading, reruns are cheap — only new versions are transferred.
 
 ### Internal Git server (bucket hosting)
 
@@ -61,7 +61,7 @@ Standard [Scoop](https://scoop.sh) — no modifications required. Clients are co
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        scoop-upstream                           │
+│                        scoop-airgap                           │
 │                                                                 │
 │  1. Read config.yaml (allowlist of buckets + apps)              │
 │                                                                 │

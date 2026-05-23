@@ -39,10 +39,10 @@ ERROR main/git: download https://…/Git-2.43.0-64-bit.exe: hash mismatch (sha25
 
 **Cause:** The downloaded file does not match the hash in the manifest. This can be caused by:
 - A CDN serving a corrupted file (transient).
-- The upstream manifest was updated between when scoop-upstream fetched it and when the binary was downloaded.
+- The upstream manifest was updated between when scoop-airgap fetched it and when the binary was downloaded.
 
 **Fix:**
-- Rerun scoop-upstream. If the error persists, the upstream manifest itself may be incorrect — check the Scoop bucket issue tracker.
+- Rerun scoop-airgap. If the error persists, the upstream manifest itself may be incorrect — check the Scoop bucket issue tracker.
 - Use `-force` to re-attempt the download on the next run.
 
 ---
@@ -88,7 +88,7 @@ hint: Updates were rejected because the tip of your current branch is behind its
 **Cause:** The remote branch has commits that the local clone does not have. This can happen if the repo was pushed to by another process or if the local clone is stale.
 
 **Fix:**
-- Delete the local clone directory (under `git.local_path_base/{bucket}`) and rerun. scoop-upstream will do a fresh clone.
+- Delete the local clone directory (under `git.local_path_base/{bucket}`) and rerun. scoop-airgap will do a fresh clone.
 - Investigate who else has push access and whether parallel runs are occurring.
 
 ---
@@ -100,7 +100,7 @@ hint: Updates were rejected because the tip of your current branch is behind its
 **Cause:** The manifest was written but the URL rewriting did not match those fields. This can happen with unusual manifest structures.
 
 **Fix:**
-- Run with a specific app: `scoop-upstream -config config.yaml -app myapp -dry-run` and review the log output.
+- Run with a specific app: `scoop-airgap -config config.yaml -app myapp -dry-run` and review the log output.
 - Check the manifest JSON in the upstream bucket to see if it uses a non-standard structure (e.g. nested `installer.url` fields — these are not currently rewritten, see [Architecture](../architecture.md)).
 
 ---
@@ -112,14 +112,14 @@ hint: Updates were rejected because the tip of your current branch is behind its
 **Fix:** This is normal and generally desirable (avoids re-cloning). To reclaim space, run `git gc` inside the clone directories, or periodically delete and re-clone:
 
 ```bash
-rm -rf /var/cache/scoop-upstream/main
-# scoop-upstream will re-clone on the next run
+rm -rf /var/cache/scoop-airgap/main
+# scoop-airgap will re-clone on the next run
 ```
 
 ---
 
 ## All apps fail with "dial tcp: no such host"
 
-**Cause:** The host running scoop-upstream cannot reach the public internet.
+**Cause:** The host running scoop-airgap cannot reach the public internet.
 
-**Fix:** scoop-upstream must run on a host with internet access. If you are containerising it, ensure the container has an external network interface and DNS resolution works (`curl https://raw.githubusercontent.com` from inside the container should succeed).
+**Fix:** scoop-airgap must run on a host with internet access. If you are containerising it, ensure the container has an external network interface and DNS resolution works (`curl https://raw.githubusercontent.com` from inside the container should succeed).

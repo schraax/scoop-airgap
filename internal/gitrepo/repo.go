@@ -29,7 +29,7 @@ func New(remoteURL, branch, localPath, authToken string) (*Repo, error) {
 		remoteURL = u.String()
 	}
 	if localPath == "" {
-		tmp, err := os.MkdirTemp("", "scoop-upstream-bucket-*")
+		tmp, err := os.MkdirTemp("", "scoop-airgap-bucket-*")
 		if err != nil {
 			return nil, fmt.Errorf("create temp dir: %w", err)
 		}
@@ -77,7 +77,7 @@ func (r *Repo) CommitAndPush(message string) error {
 	}
 
 	if err := r.git("commit", "--message", message,
-		"--author", "scoop-upstream <scoop-upstream@noreply>"); err != nil {
+		"--author", "scoop-airgap <scoop-airgap@noreply>"); err != nil {
 		return err
 	}
 	return r.git("push", "origin", r.branch)
