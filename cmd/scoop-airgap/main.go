@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andreasj/scoop-airgap/internal/config"
-	"github.com/andreasj/scoop-airgap/internal/download"
-	"github.com/andreasj/scoop-airgap/internal/gitrepo"
-	"github.com/andreasj/scoop-airgap/internal/manifest"
-	"github.com/andreasj/scoop-airgap/internal/storage"
+	"github.com/schraax/scoop-airgap/internal/config"
+	"github.com/schraax/scoop-airgap/internal/download"
+	"github.com/schraax/scoop-airgap/internal/gitrepo"
+	"github.com/schraax/scoop-airgap/internal/manifest"
+	"github.com/schraax/scoop-airgap/internal/storage"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 			fmt.Fprintf(os.Stderr,
 				"Error: config file not found: %s\n\n"+
 					"Create a config.yaml based on config.example.yaml and pass its path with -config.\n"+
-					"Full reference: https://github.com/andreasj/scoop-airgap/blob/master/docs/operator/configuration.md\n",
+					"Full reference: https://github.com/schraax/scoop-airgap/blob/master/docs/operator/configuration.md\n",
 				*configPath)
 			os.Exit(1)
 		}

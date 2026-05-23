@@ -8,7 +8,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/andreasj/scoop-airgap/internal/config"
+	"github.com/schraax/scoop-airgap/internal/config"
 )
 
 // Store is the interface every backend must satisfy.

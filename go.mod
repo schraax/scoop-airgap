@@ -1,4 +1,4 @@
-module github.com/andreasj/scoop-airgap
+module github.com/schraax/scoop-airgap
 
 go 1.22
 
