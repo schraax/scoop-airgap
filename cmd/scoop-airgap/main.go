@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -25,6 +26,14 @@ func main() {
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr,
+				"Error: config file not found: %s\n\n"+
+					"Create a config.yaml based on config.example.yaml and pass its path with -config.\n"+
+					"Full reference: https://github.com/andreasj/scoop-airgap/blob/master/docs/operator/configuration.md\n",
+				*configPath)
+			os.Exit(1)
+		}
 		log.Fatalf("load config: %v", err)
 	}
 
