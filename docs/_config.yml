@@ -15,4 +15,6 @@ nav_sort: order   # use nav_order front matter
 footer_content: "scoop-airgap — MIT License"
 
 plugins:
+  - jekyll-remote-theme
+  - jekyll-include-cache
   - jekyll-seo-tag

@@ -3,6 +3,7 @@ layout: default
 title: User Guide
 nav_order: 4
 has_children: true
+permalink: /user/
 ---
 
 # User Guide

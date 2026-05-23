@@ -44,6 +44,6 @@ It runs on a Linux host (or in a container) that *does* have internet access, mi
 
 | Audience | Start here |
 |---|---|
-| Setting up the mirror | [Operator Guide](operator/) |
-| Using Scoop on an airgapped machine | [User Guide](user/) |
-| Understanding the components | [Architecture](architecture.md) |
+| Setting up the mirror | [Operator Guide]({{ '/operator/' | relative_url }}) |
+| Using Scoop on an airgapped machine | [User Guide]({{ '/user/' | relative_url }}) |
+| Understanding the components | [Architecture]({{ '/architecture/' | relative_url }}) |

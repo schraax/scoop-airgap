@@ -3,6 +3,7 @@ layout: default
 title: Operator Guide
 nav_order: 3
 has_children: true
+permalink: /operator/
 ---
 
 # Operator Guide
